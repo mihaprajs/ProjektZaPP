@@ -1,96 +1,113 @@
 ---
-title: "Projekt"
+title: "Razpoložljiva količina kmetijskih proizvodv"
 author: "Miha Prajs"
 date: "`r format(Sys.time(), '%e %B %Y')`"
 format: 
   html:
     embed-resources: true
     toc: true
+    code-fold: true
 execute: 
   warning: false
   messages: false
   echo: true
   error: true
+bibliography: literatura.bib
 ---
-## Uvod
-*predstavitev teme*
 
-### "Predstavitev podatkov"
+## Bilanca proizvodnje in potrošnje kmetijskih proizvodov 
+Leta 2023 je bilo prebivalcu Slovenije na voljo povprečno 132 kg sadja, 112 kg žit, 101 kg zelenjave, 87 kg mesa, 74 kg krompirja, 11 kg jajc, 6 kg riža in 1 kg medu na prebivalca. V primerjavi s pejšnjim letom se je povečala razpoložljiva količia za 7 % pri rižu, 3 % pri krompirju in skoraj 2 % pri jajcih, medtem ko se je količina medu zmanjšala za 21 %, žit in zelenjave za 3 % ter za 1 % pri sadju. Količina mesa za prehrano je ostala na primerljivi ravni kot v prejšnjem letu [@Bilanca].
 
+## Kje najdemo podatke?
+Od leta 2000 Statistični urad Republike Slovenije (SURS) zbira podatke o razpoložljivih količinah kmteiskih proizvodov namenjenih prehrani prebivalstva na prebivalca. 
+
+SURS vse zbrane podatke objavljavlja oz. posodablja v podatkovni bazi [SiStat](https://pxweb.stat.si/SiStat/sl). Podatke o razpoložljivi količini kmetijskih proizvodov za prehrano na prebivalca pa najdemo na povezavi: [pxweb.stat.si/SiStatData/pxweb/sl/Data/-/H206S.px](https://pxweb.stat.si/SiStatData/pxweb/sl/Data/-/H206S.px).
+
+## Rezultati
 ```{r}
-packages<-c("janitor","tidyverse","gt","esquisse","ggrepel")
-sapply(packages,library,character.only=T)
-
-unzip("archive.zip")
-sp<-read.csv("Students Performance.csv") %>% 
-  clean_names() %>%
-  rename(,c("Matematika"="math_score",
-            "Bralno razumevanje"="reading_score",
-            "Pismenost"="writing_score",
-            "Pripravljenost"="placement_score",
-            "Leto vpisa"="club_join_date"))
-head(sp)
+library(tidyverse)
+library(esquisse)
 ```
-*opis df-ja*
+```{r}
+df<-read.csv("H206S_20240612-163643.csv") %>%
+  rename("Leto"="LETO") %>%
+  arrange(desc(Leto))
+df %>% head(10)
+```
+Iz zgornje tabele je razvidno, da so podatki razdeljeni v naslednje skupine:
 
-## Jedro
-*operacije z df-jem*
+- Žita,
+- Meso,
+- Jajca,
+- Krompir,
+- Zelenava,
+- Med,
+- Riž,
+- Sadje.
+
+Takoj lahko opazimo, da je nekaterih proizvodov bistveno več kot drugih. Med poizvodi, ki jih je navoljo naječ, iztopa sadje z 131,61 kg/prebivalca, med tistimi, ki jih je najmanj, pa iztopa med z le 1,01 kg/prebilvalca.
 
 ```{r}
-sp %>%
-  select(Matematika,`Bralno razumevanje`,Pismenost) %>%
-  summarise(`Povp. matematičnih sposobnosti`=mean(Matematika),
-            `Povp. bralnega razumevanja`=mean(`Bralno razumevanje`),
-            `Povp. pismenosti`=mean(Pismenost))
-
-sp %>%
-  select(Pripravljenost) %>%
-  summarise(`Najnižja ocena pripravljenosti`=min(Pripravljenost))
-
-sp %>%
-  summarise(.by=`Leto vpisa`,`Št. vpisov na leto`=n()) %>%
-  print(.) %>%
-  ggplot()+
-  aes(y=`Št. vpisov na leto`,x=`Leto vpisa`)+
+df %>%
+  pivot_longer(cols=-Leto,names_to="Proizvod",values_to="Kolicina") %>%
+  ggplot(aes(x=Leto,y=Kolicina))+
   geom_col()+
-  labs(x="Leto vpisa",
-       y="Št. vpisanih študentov",
-       title="Števlio vpisanih študentov na leto")
+  facet_wrap(~Proizvod,scales="free_y")+
+  labs(title="Količina proizvoda")
 
-sp %>%
-  pivot_longer(`Leto vpisa`,values_to="Leto vpisa") %>%
-  group_by(`Leto vpisa`) %>%
-  summarise(`Matematika`=mean(Matematika),
-            `Bralno razumevanje`=mean(`Bralno razumevanje`),
-            `Pismenost`=mean(Pismenost),
-            `Pripravljenost`=mean(Pripravljenost)) %>%
-  {print(.);.} %>%
-  pivot_longer(cols=c("Matematika",
-                      "Bralno razumevanje",
-                      "Pismenost",
-                      "Pripravljenost"),
-               names_to="Predmet",
-               values_to="Povp. ocena") %>%
-  ggplot()+
-  aes(x=factor(`Leto vpisa`),y=`Povp. ocena`,fill=Predmet)+
-  geom_bar(stat="identity",position="dodge")+
-  labs(title="Povprečne ocene po predmetih in letih",
-       x="Leto")
-
-sp %>%
-  ggplot()+
-  aes(x=Matematika)+
-  geom_bar()
-  
-
-sp %>%
-  mutate(ID=rownames(sp)) %>%
-  head(100) %>%
-  select(ID,Pismenost,Pripravljenost) %>%
-  ggplot()+
-  aes(x=Pismenost,y=Pripravljenost,label=ID)+
-  geom_point()+
-  geom_label_repel()
 ```
+Zgornji grafi prikazujejo količino posameznih proivodov skozi leta. Vidimo lahko, da se količine v večini ne spreminjajo drastično, le med ima velike skoke posamezna leta.
+
+```{r}
+df1<-df %>%
+  pivot_longer(cols=-Leto,names_to="Proizvod",values_to="Kolicina") %>%
+  group_by(Leto) %>%
+  summarise("Kolicina hrane na prebivalca"=sum(Kolicina))
+df1
+```
+V zgornji tabeli so prikazane skupne količine kmetijskih proizvodov na prebivalca za posamezna leta, razlike med posameznimi leti pa so bolj vidne na spodnjem grafu.
+
+```{r}
+df1 %>% 
+  ggplot(aes(y=`Kolicina hrane na prebivalca`,x=Leto))+
+  geom_line()
+```
+
+
+```{r}
+df %>%
+  summarise("Povp. kolicina žit"=mean(Zita),
+            "Povp. kolicina mesa"=mean(Meso),
+            "Povp. kolicina jajc"=mean(Jajca),
+            "Povp. kolicina krompirja"=mean(Krompir),
+            "Povp. kolicina zelenjave"=mean(Zelenjava),
+            "Povp. kolicina medu"=mean(Med),
+            "Povp. kolicina riža"=mean(Riz),
+            "Povp. kolicina sadja"=mean(Sadje))
+```
+V zadnjih 24 letih je bilo na trgu posamzenemu prebivalcu na voljo največ sadja, povprečno 125,33 kg na leto, in najmanj medu, v povprečju 1,1 kg na leto.
+
+```{r}
+df %>%
+  summarise("Žita"=sum(Zita),
+            "Meso"=sum(Meso),
+            "Jajca"=sum(Jajca),
+            "Krompir"=sum(Krompir),
+            "Zelenjava"=sum(Zelenjava),
+            "Med"=sum(Med),
+            "Riž"=sum(Riz),
+            "Sadje"=sum(Sadje)) %>%
+  pivot_longer(everything(),names_to="Proizvod",values_to="Kolicina") %>%
+  ggplot(aes(x=Proizvod,y=Kolicina,fill=Proizvod))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x=element_blank())+
+  labs(title="Skupna količina kmetijskih proizvodov na prebivalca",
+       x="Proizvod",
+       y="Količina [kg]")
+```
+V zadnjih 24 letih je bilo na trgu posamzenemu prebivalcu na voljo največ sadja, povprečno 125,33 kg na leto, in najmanj medu, v povprečju 1,1 kg na leto.
 
 ## Zaključek
+Ugotovili smo, da je bilo povprečnemu Slovencu navoljo največ sadja in žit ter najmanj medu in riža. Skupaj mu je bilo vsako leto navoljo več kot 450 kg kmetijskih proizvodov.
+
+## Viri
