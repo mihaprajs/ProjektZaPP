@@ -1,0 +1,96 @@
+---
+title: "Projekt"
+author: "Miha Prajs"
+date: "`r format(Sys.time(), '%e %B %Y')`"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+execute: 
+  warning: false
+  messages: false
+  echo: true
+  error: true
+---
+## Uvod
+*predstavitev teme*
+
+### "Predstavitev podatkov"
+
+```{r}
+packages<-c("janitor","tidyverse","gt","esquisse","ggrepel")
+sapply(packages,library,character.only=T)
+
+unzip("archive.zip")
+sp<-read.csv("Students Performance.csv") %>% 
+  clean_names() %>%
+  rename(,c("Matematika"="math_score",
+            "Bralno razumevanje"="reading_score",
+            "Pismenost"="writing_score",
+            "Pripravljenost"="placement_score",
+            "Leto vpisa"="club_join_date"))
+head(sp)
+```
+*opis df-ja*
+
+## Jedro
+*operacije z df-jem*
+
+```{r}
+sp %>%
+  select(Matematika,`Bralno razumevanje`,Pismenost) %>%
+  summarise(`Povp. matematičnih sposobnosti`=mean(Matematika),
+            `Povp. bralnega razumevanja`=mean(`Bralno razumevanje`),
+            `Povp. pismenosti`=mean(Pismenost))
+
+sp %>%
+  select(Pripravljenost) %>%
+  summarise(`Najnižja ocena pripravljenosti`=min(Pripravljenost))
+
+sp %>%
+  summarise(.by=`Leto vpisa`,`Št. vpisov na leto`=n()) %>%
+  print(.) %>%
+  ggplot()+
+  aes(y=`Št. vpisov na leto`,x=`Leto vpisa`)+
+  geom_col()+
+  labs(x="Leto vpisa",
+       y="Št. vpisanih študentov",
+       title="Števlio vpisanih študentov na leto")
+
+sp %>%
+  pivot_longer(`Leto vpisa`,values_to="Leto vpisa") %>%
+  group_by(`Leto vpisa`) %>%
+  summarise(`Matematika`=mean(Matematika),
+            `Bralno razumevanje`=mean(`Bralno razumevanje`),
+            `Pismenost`=mean(Pismenost),
+            `Pripravljenost`=mean(Pripravljenost)) %>%
+  {print(.);.} %>%
+  pivot_longer(cols=c("Matematika",
+                      "Bralno razumevanje",
+                      "Pismenost",
+                      "Pripravljenost"),
+               names_to="Predmet",
+               values_to="Povp. ocena") %>%
+  ggplot()+
+  aes(x=factor(`Leto vpisa`),y=`Povp. ocena`,fill=Predmet)+
+  geom_bar(stat="identity",position="dodge")+
+  labs(title="Povprečne ocene po predmetih in letih",
+       x="Leto")
+
+sp %>%
+  ggplot()+
+  aes(x=Matematika)+
+  geom_bar()
+  
+
+sp %>%
+  mutate(ID=rownames(sp)) %>%
+  head(100) %>%
+  select(ID,Pismenost,Pripravljenost) %>%
+  ggplot()+
+  aes(x=Pismenost,y=Pripravljenost,label=ID)+
+  geom_point()+
+  geom_label_repel()
+```
+
+## Zaključek
